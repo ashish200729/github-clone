@@ -25,7 +25,13 @@ function parsePositiveInteger(value: string | undefined, fallback: number, envNa
     return fallback;
   }
 
-  const parsedValue = Number.parseInt(value, 10);
+  const normalizedValue = value.trim();
+
+  if (!/^\d+$/.test(normalizedValue)) {
+    throw new Error(`${envName} must be a positive integer.`);
+  }
+
+  const parsedValue = Number.parseInt(normalizedValue, 10);
 
   if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
     throw new Error(`${envName} must be a positive integer.`);

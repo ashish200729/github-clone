@@ -1,6 +1,7 @@
 node_modules
 .env
 .env.*
+!.env.example
 package-lock.json
 dist
 .DS_Store
@@ -9,6 +10,7 @@ apps/web/out
 apps/api/dist
 apps/api/.env
 apps/api/.env.*
+!apps/api/.env.example
 packages/shared/dist
 apps/git-service/tmp
 apps/*/node_modules

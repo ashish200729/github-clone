@@ -1,6 +1,13 @@
 import { Pool } from "pg";
 import { loadDatabaseConfig } from "./config.js";
 
+export interface DatabaseHealthResult {
+  status: "ok" | "error";
+  required: true;
+  message: string;
+  latencyMs?: number;
+}
+
 let databasePool: Pool | undefined;
 
 export function getDatabasePool(): Pool {
@@ -23,6 +30,27 @@ export async function verifyDatabaseConnection(): Promise<void> {
     await client.query("SELECT 1");
   } finally {
     client.release();
+  }
+}
+
+export async function getDatabaseHealth(): Promise<DatabaseHealthResult> {
+  const startedAt = performance.now();
+
+  try {
+    await verifyDatabaseConnection();
+
+    return {
+      status: "ok",
+      required: true,
+      latencyMs: Math.round(performance.now() - startedAt),
+      message: "PostgreSQL responded to SELECT 1.",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      required: true,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

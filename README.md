@@ -42,7 +42,34 @@ The API reads its database env from `apps/api/.env`.
 
 The initial schema is intentionally custom and namespaced under `auth.*`. It is Auth.js-ready, but not the exact default Auth.js PostgreSQL adapter schema. A later Auth.js integration must use an adapter connection or pool configured with `search_path=auth,public` and must be verified explicitly.
 
+## Redis Setup
+
+The API also bootstraps Redis before it will serve requests.
+
+- Required env:
+  - `REDIS_URL` when `REDIS_REQUIRED=true`
+- Optional env:
+  - `API_SHUTDOWN_TIMEOUT_MS` default `10000`
+  - `REDIS_KEY_PREFIX` default `ghclone:api:`
+  - `REDIS_CONNECT_TIMEOUT_MS` default `10000`
+  - `REDIS_REQUIRED` values: `true` or `false`, default `true`
+
+Accepted Redis connection string schemes:
+
+- `redis://`
+- `rediss://`
+
+If `REDIS_REQUIRED=true`, the API exits before `listen()` when the Redis env is invalid or Redis cannot answer `PING`.
+
+If `REDIS_REQUIRED=false`, the API starts in degraded mode and `GET /health` reports Redis as degraded.
+
+On `SIGINT` or `SIGTERM`, the API attempts a graceful shutdown. If the HTTP server has not drained within `API_SHUTDOWN_TIMEOUT_MS`, it force-closes open connections and exits with status `1`.
+
+The API reads database and Redis env from `apps/api/.env`. Use `apps/api/.env.example` as the starter template.
+
 ## Endpoints
 
 - API: `GET /health`, `GET /api/hello`
+  - `GET /health` now includes `database` and `redis` dependency objects with `status`, `required`, `message`, and `latencyMs` when available
+  - `GET /health` returns HTTP `503` when a required dependency is unhealthy, and HTTP `200` for healthy or degraded optional-dependency states
 - Go service: `GET /health`, `GET /hello`
