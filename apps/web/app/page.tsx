@@ -2,67 +2,247 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { SignOutForm } from "@/components/auth/sign-out-form";
+import { FaGithub, FaPlus, FaBell, FaBars } from "react-icons/fa";
+import { FiSearch, FiMessageSquare, FiSend, FiInbox, FiTarget } from "react-icons/fi";
+import { BiGitRepoForked, BiStar, BiGitPullRequest, BiTargetLock } from "react-icons/bi";
+import { MdOutlineMoreHoriz } from "react-icons/md";
+import { LuCircleDot } from "react-icons/lu";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await auth();
 
+  // Mock Data
+  const repositories = [
+    { name: "ashish200729/bolt.diy", visibility: "Public" },
+    { name: "ashish200729/orbiteditor", visibility: "Public" },
+    { name: "ashish200729/vexelityai-web", visibility: "Public" },
+    { name: "ashish200729/flowlink", visibility: "Private" },
+    { name: "ashish200729/orbiteditor-baby", visibility: "Private" },
+    { name: "ashish200729/craftcare", visibility: "Public" },
+    { name: "ashish200729/ashish-portfolio", visibility: "Public" },
+  ];
+
+  const feedEvents = [
+    {
+      actor: "maxcp-dd",
+      action: "forked your repository",
+      repo: "maxcp-dd/orbiteditor",
+      time: "3 weeks ago",
+      type: "fork",
+    },
+    {
+      actor: "pushpkant00",
+      action: "started following you",
+      repo: "Pushpkant Rathore pushpkant00",
+      time: "last month",
+      type: "follow",
+      extra: "4 repositories",
+    },
+  ];
+
+  const changelog = [
+    {
+      title: "Figma MCP server can now generate design layers from...",
+      date: "3 days ago",
+    },
+    {
+      title: "GitHub Copilot in Visual Studio Code v1.110 -...",
+      date: "3 days ago",
+    },
+    {
+      title: "GPT-5.4 is generally available in GitHub Copilot",
+      date: "3 days ago",
+    },
+    {
+      title: "Discover and manage agent activity with new session...",
+      date: "3 days ago",
+    },
+  ];
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.1),_transparent_35%),linear-gradient(180deg,_#f8fafc,_#e2e8f0)] px-6 py-16">
-      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[0_35px_90px_rgba(15,23,42,0.08)] backdrop-blur md:p-12">
-        <div className="grid gap-8 md:grid-cols-[1.4fr_0.8fr]">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">Production Auth Foundation</p>
-            <h1 className="mt-4 max-w-3xl text-5xl font-semibold tracking-tight text-slate-950">
-              Auth.js now owns the sign-in flow, PostgreSQL sessions, and the trusted app boundary.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              The Next.js app handles GitHub OAuth, session cookies, and protected UI. Express only accepts a short-lived signed
-              identity envelope minted by the authenticated Next.js server.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              {session?.user?.id ? (
-                <>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Open dashboard
-                  </Link>
-                  <SignOutForm />
-                </>
-              ) : (
-                <SignInForm callbackUrl="/dashboard" />
-              )}
+    <div className="min-h-screen bg-[#010409] text-[#c9d1d9] font-sans flex flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 md:px-6 lg:px-8 py-3 bg-[#010409] border-b border-[#30363d]">
+        <div className="flex items-center gap-4">
+          <button className="text-[#8b949e] hover:text-[#c9d1d9] sm:hidden">
+            <FaBars size={20} />
+          </button>
+          <a href="/" className="text-white hover:text-white/80">
+            <FaGithub size={32} />
+          </a>
+          <span className="font-semibold px-2">Dashboard</span>
+        </div>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <div className="relative w-full max-w-[320px] lg:max-w-[400px] hidden sm:block">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8b949e]">
+              <FiSearch />
+            </span>
+            <input
+              type="text"
+              placeholder="Type to search"
+              className="w-full bg-[#0d1117] border border-[#30363d] rounded-md py-1.5 pl-8 pr-8 text-sm focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8b949e] border border-[#30363d] rounded-[4px] px-1.5 text-[10px]">
+              /
+            </span>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 border-l border-[#30363d] pl-2 sm:pl-4 ml-2">
+            <button className="border border-[#30363d] rounded-md px-2 py-1 text-xs font-medium hover:border-[#8b949e] flex items-center gap-1">
+              <FaPlus /> <span className="hidden sm:inline">▾</span>
+            </button>
+            <button className="p-1.5 rounded-md hover:bg-[#30363d] text-[#c9d1d9] hidden md:block">
+              <LuCircleDot size={16} />
+            </button>
+            <button className="p-1.5 rounded-md hover:bg-[#30363d] text-[#c9d1d9] hidden md:block">
+              <BiGitPullRequest size={16} />
+            </button>
+            <button className="p-1.5 rounded-md hover:bg-[#30363d] text-[#c9d1d9] relative">
+              <FiInbox size={16} />
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1f6feb] rounded-full ring-2 ring-[#010409]"></div>
+            </button>
+            <div className="w-8 h-8 rounded-full bg-[#1f6feb] overflow-hidden ml-1 flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80">
+              A
             </div>
           </div>
-          <aside className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-            <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Session Strategy</p>
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                Database sessions are stored in PostgreSQL under the existing <code>auth.*</code> schema for revocation and
-                future account-management safety.
-              </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">API Boundary</p>
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                Browser clients never choose a user id for Express. The Next.js server verifies the session first, then signs the
-                forwarded actor claims with a separate HMAC secret.
-              </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Current Session</p>
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                {session?.user?.id
-                  ? `Signed in as ${session.user.name ?? "Unnamed user"} (${session.user.email ?? "no public email"}).`
-                  : "No active session. Sign in with GitHub to access the protected routes."}
-              </p>
-            </div>
-          </aside>
         </div>
-      </section>
-    </main>
+      </header>
+
+      {/* Main Container */}
+      <div className="flex-1 w-full flex flex-col md:flex-row">
+        
+        {/* Left Sidebar */}
+        <aside className="w-full md:w-[320px] lg:w-[350px] flex-shrink-0 border-b md:border-b-0 md:border-r border-[#30363d] bg-[#0d1117] py-6 px-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Top repositories</h2>
+            <Link
+              href="/repos/new"
+              className="text-xs bg-[#238636] hover:bg-[#2ea043] text-white px-2 py-1.5 rounded-md font-medium flex items-center gap-1 leading-none shadow-sm"
+            >
+              <BiGitRepoForked /> New
+            </Link>
+          </div>
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Find a repository..."
+              className="w-full bg-[#0d1117] border border-[#30363d] rounded-md py-[5px] px-3 text-[14px] text-[#c9d1d9] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff] shadow-sm"
+            />
+          </div>
+          <ul className="space-y-3 md:space-y-[10px]">
+            {repositories.map((repo, i) => (
+              <li key={i} className="flex items-center gap-3 text-[14px]">
+                <div className="w-4 h-4 rounded-full flex-shrink-0 bg-gradient-to-br from-[#8a2be2] to-[#ffa500]/50" />
+                <a href={`/${repo.name}`} className="font-semibold text-[#c9d1d9] hover:underline truncate">
+                  {repo.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 text-[13px] text-[#8b949e] hover:text-[#58a6ff] cursor-pointer">
+            Show more
+          </div>
+        </aside>
+
+        {/* Center Content */}
+        <main className="flex-1 min-w-0 py-6 px-4 md:pl-8 md:pr-6 lg:pl-10 lg:pr-8">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-semibold">Home</h1>
+          </div>
+
+          <div className="flex items-center justify-between mb-4 mt-2">
+            <h2 className="text-sm font-semibold">Feed</h2>
+            <button className="text-xs text-[#c9d1d9] hover:bg-[#30363d] flex items-center gap-1.5 border border-[#30363d] px-3 py-1.5 rounded-md bg-[#21262d] transition-colors shadow-sm font-medium">
+              <FiSearch size={14} /> Filter
+            </button>
+          </div>
+
+          {/* Feed Items */}
+          <div className="space-y-4">
+            {feedEvents.map((evt, idx) => (
+               <div key={idx} className="border border-[#30363d] rounded-xl bg-[#0d1117] overflow-hidden shadow-sm">
+                 <div className="p-4 flex items-start gap-3">
+                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#2ea043] to-[#8a2be2] overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                     <span className="text-xs text-white font-bold">{evt.actor.charAt(0).toUpperCase()}</span>
+                     <div className="absolute -bottom-1 -right-1 bg-[#1f6feb] text-white text-[10px] p-0.5 rounded-full border border-[#0d1117]">
+                       {evt.type === 'fork' ? <BiGitRepoForked /> : <FaPlus />}
+                     </div>
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <div className="text-[14px] text-[#8b949e] flex items-center justify-between">
+                       <div>
+                         <span className="font-semibold text-[#c9d1d9]">{evt.actor}</span> {evt.action}
+                       </div>
+                       <span className="cursor-pointer hover:text-white p-1 rounded-md hover:bg-[#30363d]"><MdOutlineMoreHoriz size={18} /></span>
+                     </div>
+                     <div className="text-[12px] text-[#8b949e] mt-0.5">{evt.time}</div>
+                     
+                     <div className="mt-4 flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-xl p-4 shadow-sm">
+                       <div className="flex items-center gap-2">
+                         <div className="text-[#8b949e]"><BiGitRepoForked size={18} /></div>
+                         <a href="#" className="font-semibold text-[15px] text-[#c9d1d9] hover:text-[#58a6ff] hover:underline truncate">
+                           {evt.repo}
+                         </a>
+                       </div>
+                       <button className="border border-[#30363d] rounded-md px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] hover:border-[#8b949e] text-xs font-medium flex items-center gap-1 transition-colors shadow-sm">
+                         <span className="text-[#8b949e]"><BiStar size={14} /></span> {evt.type === 'follow' ? 'Follow' : 'Star'} <span className="text-[#8b949e] ml-1">▾</span>
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+            ))}
+          </div>
+
+          <div className="mt-8 border-t border-[#30363d] pt-6">
+             <div className="flex items-center justify-between">
+               <h3 className="flex items-center gap-2 text-[15px] font-semibold">
+                 <span className="text-[#8b949e]"><BiGitRepoForked /></span> Trending repositories · <a href="#" className="text-[#58a6ff] hover:underline font-normal text-[13px]">See more</a>
+               </h3>
+               <span className="text-[#8b949e] cursor-pointer p-1 rounded-md hover:text-white hover:bg-[#30363d]"><MdOutlineMoreHoriz size={18} /></span>
+             </div>
+             
+             <div className="mt-4 border border-[#30363d] rounded-xl bg-[#0d1117] p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                   <div className="flex items-center gap-2">
+                     <div className="text-[#8b949e]"><BiGitRepoForked size={18} /></div>
+                     <a href="#" className="font-semibold text-[15px] text-[#c9d1d9] hover:text-[#58a6ff] hover:underline">
+                       paperclipai/paperclip
+                     </a>
+                   </div>
+                   <button className="border border-[#30363d] rounded-md px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] hover:border-[#8b949e] text-xs font-medium flex items-center gap-1 transition-colors shadow-sm">
+                     <span className="text-[#8b949e]"><BiStar size={14} /></span> Star <span className="text-[#8b949e] ml-1">▾</span>
+                   </button>
+                </div>
+                <p className="text-[#8b949e] text-[13px] ml-[26px]">Open-source orchestration for zero-human companies</p>
+             </div>
+          </div>
+        </main>
+
+        {/* Right Sidebar - Changelog */}
+        <aside className="hidden lg:block w-[320px] flex-shrink-0 py-6 pr-4 md:pr-6 lg:pr-8">
+          <div className="border border-[#30363d] rounded-xl bg-[#0d1117] p-5 shadow-sm">
+            <h2 className="text-[14px] font-semibold mb-5">Latest from our changelog</h2>
+            <div className="relative border-l-2 border-[#21262d] ml-1.5 space-y-5">
+              {changelog.map((item, idx) => (
+                <div key={idx} className="relative pl-5">
+                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-[#30363d] ring-4 ring-[#0d1117]"></div>
+                  <div className="text-[12px] text-[#8b949e] mb-1">{item.date}</div>
+                  <a href="#" className="text-[14px] font-semibold text-[#c9d1d9] hover:text-[#58a6ff] leading-snug block group-hover:underline">
+                    {item.title}
+                  </a>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 pt-4">
+              <a href="#" className="text-[#8b949e] hover:text-[#58a6ff] text-[12px] flex items-center gap-1 hover:underline">
+                View changelog →
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
   );
 }
