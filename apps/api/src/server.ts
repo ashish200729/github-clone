@@ -2,9 +2,13 @@ import { type Server } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type Request, type Response } from "express";
+import { authenticateInternalRequest, loadInternalAuthConfig } from "./auth/index.js";
 import { closeDatabasePool, getDatabaseHealth, verifyDatabaseConnection } from "./db/index.js";
+import { ensureApiEnvLoaded } from "./env/load.js";
 import { summarizeServiceHealth } from "./health.js";
 import { closeRedis, getRedisHealth, initRedis } from "./redis/index.js";
+
+ensureApiEnvLoaded();
 
 const DEFAULT_API_PORT = 4000;
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -48,6 +52,7 @@ const shutdownTimeoutMs = loadShutdownTimeoutMs(process.env.API_SHUTDOWN_TIMEOUT
 
 const application = express();
 application.disable("x-powered-by");
+application.use(express.json({ limit: "64kb" }));
 
 async function closeDependencies(): Promise<void> {
   const shutdownResults = await Promise.allSettled([closeRedis(), closeDatabasePool()]);
@@ -115,10 +120,64 @@ application.get("/api/hello", (_request: Request, response: Response) => {
   });
 });
 
+application.get("/api/internal/viewer", authenticateInternalRequest, (request: Request, response: Response) => {
+  const actor = request.authenticatedActor;
+
+  if (!actor) {
+    response.status(500).json({
+      error: {
+        code: "INTERNAL_AUTH_MISSING",
+        message: "Authenticated actor context was missing after verification.",
+      },
+    });
+    return;
+  }
+
+  response.json({
+    actor,
+    message: "Express accepted a trusted actor envelope minted by the authenticated Next.js server.",
+  });
+});
+
+application.post("/api/internal/repos", authenticateInternalRequest, (request: Request, response: Response) => {
+  const actor = request.authenticatedActor;
+  const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
+
+  if (!actor) {
+    response.status(500).json({
+      error: {
+        code: "INTERNAL_AUTH_MISSING",
+        message: "Authenticated actor context was missing after verification.",
+      },
+    });
+    return;
+  }
+
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/.test(name)) {
+    response.status(400).json({
+      error: {
+        code: "INVALID_REPOSITORY_NAME",
+        message: "Repository names must use lowercase letters, numbers, and hyphens.",
+      },
+    });
+    return;
+  }
+
+  response.status(201).json({
+    repo: {
+      name,
+      ownerId: actor.userId,
+      visibility: "private",
+      status: "draft",
+    },
+  });
+});
+
 async function startServer(): Promise<void> {
   let server: Server | undefined;
 
   try {
+    loadInternalAuthConfig();
     await verifyDatabaseConnection();
     await initRedis();
     server = await listen(application, port);

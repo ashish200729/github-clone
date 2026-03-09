@@ -1,12 +1,9 @@
-import dotenv from "dotenv";
-import path from "node:path";
 import { URL } from "node:url";
-import { fileURLToPath } from "node:url";
+import { ensureApiEnvLoaded } from "../env/load.js";
 
 const DEFAULT_POOL_MAX = 10;
 const DEFAULT_IDLE_TIMEOUT_MS = 30_000;
 const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
-const envFilePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.env");
 
 type DatabaseSslMode = "disable" | "require";
 
@@ -18,7 +15,7 @@ export interface DatabaseConfig {
   ssl?: false | { rejectUnauthorized: true };
 }
 
-dotenv.config({ path: envFilePath, quiet: true });
+ensureApiEnvLoaded();
 
 function parsePositiveInteger(value: string | undefined, fallback: number, envName: string): number {
   if (value === undefined) {

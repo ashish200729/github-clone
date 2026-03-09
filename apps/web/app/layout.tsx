@@ -8,8 +8,8 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "GitHub Clone Starter",
-  description: "Minimal starter for the GitHub clone workspace.",
+  title: "GitHub Clone",
+  description: "GitHub Clone with Auth.js, PostgreSQL sessions, and a trusted Next.js to Express auth boundary.",
 };
 
 export default function RootLayout({
@@ -18,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geist.variable} antialiased`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geist.variable} antialiased`} suppressHydrationWarning>
         {children}
       </body>
     </html>

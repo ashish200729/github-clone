@@ -1,10 +1,8 @@
-import dotenv from "dotenv";
-import path from "node:path";
-import { URL, fileURLToPath } from "node:url";
+import { URL } from "node:url";
+import { ensureApiEnvLoaded } from "../env/load.js";
 
 const DEFAULT_REDIS_KEY_PREFIX = "ghclone:api:";
 const DEFAULT_REDIS_CONNECT_TIMEOUT_MS = 10_000;
-const envFilePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.env");
 
 export interface RedisConfig {
   url: string;
@@ -14,7 +12,7 @@ export interface RedisConfig {
   required: boolean;
 }
 
-dotenv.config({ path: envFilePath, quiet: true });
+ensureApiEnvLoaded();
 
 function parsePositiveInteger(value: string | undefined, fallback: number, envName: string): number {
   if (value === undefined) {
