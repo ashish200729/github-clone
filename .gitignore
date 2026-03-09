@@ -1,10 +1,14 @@
 node_modules
+.env
+.env.*
 package-lock.json
 dist
 .DS_Store
 apps/web/.next
 apps/web/out
 apps/api/dist
+apps/api/.env
+apps/api/.env.*
 packages/shared/dist
 apps/git-service/tmp
 apps/*/node_modules
