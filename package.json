@@ -1,0 +1,31 @@
+{
+  "name": "github-clone",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "description": "Minimal monorepo starter.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api,git -c blue,green,yellow \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:git-service\"",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:git-service": "cd apps/git-service && go run ./cmd/server",
+    "build": "npm run build --workspace apps/api && npm run build --workspace apps/web",
+    "lint": "npm run lint --workspace apps/web && npm run lint --workspace apps/api",
+    "typecheck": "npm run typecheck --workspace apps/api && npm run typecheck --workspace apps/web"
+  },
+  "keywords": [
+    "github",
+    "nextjs",
+    "express",
+    "go",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

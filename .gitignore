@@ -1,0 +1,16 @@
+node_modules
+package-lock.json
+dist
+.DS_Store
+apps/web/.next
+apps/web/out
+apps/api/dist
+packages/shared/dist
+apps/git-service/tmp
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+apps/*/.turbo
+apps/*/.DS_Store
+apps/*/npm-debug.log*
+apps/git-service/server
