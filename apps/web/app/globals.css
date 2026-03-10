@@ -8,12 +8,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist);
+  --font-sans: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
 body {
-  background: var(--background);
+  background: #010409;
   color: var(--foreground);
-  font-family: var(--font-geist), sans-serif;
+  font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
   min-height: 100vh;
+}
+
+html {
+  background: #010409;
 }

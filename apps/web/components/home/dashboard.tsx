@@ -1,22 +1,21 @@
-import Link from "next/link";
 import { FaGithub, FaPlus, FaBars } from "react-icons/fa";
 import { FiSearch, FiInbox } from "react-icons/fi";
 import { BiGitRepoForked, BiStar, BiGitPullRequest } from "react-icons/bi";
 import { MdOutlineMoreHoriz } from "react-icons/md";
 import { LuCircleDot } from "react-icons/lu";
+import { InstantLink as Link } from "@/components/navigation/instant-link";
+import type { AuthenticatedAppUser } from "@/lib/auth/protection";
+import type { RepoSummary } from "@/lib/repos/types";
+import { TopRepositoriesPanel } from "@/components/home/top-repositories-panel";
 
-export function Dashboard({ session }: { session: any }) {
-  // Mock Data
-  const repositories = [
-    { name: "ashish200729/bolt.diy", visibility: "Public" },
-    { name: "ashish200729/orbiteditor", visibility: "Public" },
-    { name: "ashish200729/vexelityai-web", visibility: "Public" },
-    { name: "ashish200729/flowlink", visibility: "Private" },
-    { name: "ashish200729/orbiteditor-baby", visibility: "Private" },
-    { name: "ashish200729/craftcare", visibility: "Public" },
-    { name: "ashish200729/ashish-portfolio", visibility: "Public" },
-  ];
+interface DashboardProps {
+  user: AuthenticatedAppUser;
+  repositories: RepoSummary[];
+  dashboardError?: string | null;
+  dashboardPath: string;
+}
 
+export function Dashboard({ user, repositories, dashboardError, dashboardPath }: DashboardProps) {
   const feedEvents = [
     {
       actor: "maxcp-dd",
@@ -96,10 +95,10 @@ export function Dashboard({ session }: { session: any }) {
               <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1f6feb] rounded-full ring-2 ring-[#010409]"></div>
             </button>
             <div className="w-8 h-8 rounded-full bg-[#1f6feb] overflow-hidden ml-1 flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 border border-[#30363d]">
-              {session?.user?.image ? (
-                <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+              {user.image ? (
+                <img src={user.image} alt={user.name || "User"} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-sm">{session?.user?.name?.charAt(0).toUpperCase() || "A"}</span>
+                <span className="text-sm">{user.name?.charAt(0).toUpperCase() || "A"}</span>
               )}
             </div>
           </div>
@@ -111,41 +110,12 @@ export function Dashboard({ session }: { session: any }) {
         
         {/* Left Sidebar */}
         <aside className="w-full md:w-[320px] lg:w-[350px] flex-shrink-0 border-b md:border-b-0 md:border-r border-[#30363d] bg-[#0d1117] py-6 px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold">Top repositories</h2>
-            <Link
-              href="/repos/new"
-              className="text-xs bg-[#238636] hover:bg-[#2ea043] text-white px-2 py-1.5 rounded-md font-medium flex items-center gap-1 leading-none shadow-sm"
-            >
-              <BiGitRepoForked /> New
-            </Link>
-          </div>
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Find a repository..."
-              className="w-full bg-[#0d1117] border border-[#30363d] rounded-md py-[5px] px-3 text-[14px] text-[#c9d1d9] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff] shadow-sm"
-            />
-          </div>
-          <ul className="space-y-3 md:space-y-[10px]">
-            {repositories.map((repo, i) => (
-              <li key={i} className="flex items-center gap-3 text-[14px]">
-                <div className="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden bg-[#1f6feb] flex items-center justify-center border border-[#30363d] text-white">
-                  {session?.user?.image ? (
-                    <img src={session.user.image} alt={repo.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[8px] font-bold">{repo.name.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <Link href={`/${repo.name}`} className="font-semibold text-[#c9d1d9] hover:underline truncate">
-                  {repo.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-5 text-[13px] text-[#8b949e] hover:text-[#58a6ff] cursor-pointer">
-            Show more
-          </div>
+          <TopRepositoriesPanel
+            user={user}
+            repositories={repositories}
+            dashboardError={dashboardError}
+            ownerPageHref={dashboardPath}
+          />
         </aside>
 
         {/* Center Content */}

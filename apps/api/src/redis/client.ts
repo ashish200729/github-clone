@@ -291,6 +291,50 @@ export async function delKey(key: string): Promise<number> {
   return client.del(key);
 }
 
+export async function delKeys(keys: string[]): Promise<number> {
+  if (keys.length === 0) {
+    return 0;
+  }
+
+  const client = getRedisClient();
+  let deletedCount = 0;
+
+  for (const key of keys) {
+    deletedCount += await client.del(key);
+  }
+
+  return deletedCount;
+}
+
+export async function delKeysByPattern(pattern: string): Promise<number> {
+  const client = getRedisClient();
+  const keys: string[] = [];
+
+  for await (const key of client.scanIterator({
+    MATCH: pattern,
+    COUNT: 100,
+  })) {
+    if (typeof key === "string") {
+      keys.push(key);
+      continue;
+    }
+
+    keys.push(...key);
+  }
+
+  if (keys.length === 0) {
+    return 0;
+  }
+
+  let deletedCount = 0;
+
+  for (const key of keys) {
+    deletedCount += await client.del(key);
+  }
+
+  return deletedCount;
+}
+
 export async function closeRedis(): Promise<void> {
   const client = redisClient;
   const required = redisConfig?.required ?? redisHealth.required;

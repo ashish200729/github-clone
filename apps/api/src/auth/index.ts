@@ -6,4 +6,4 @@ export {
   type AuthenticatedInternalActor,
   type InternalApiActorTokenPayload,
 } from "./internal.js";
-export { authenticateInternalRequest } from "./middleware.js";
+export { authenticateInternalRequest, optionallyAuthenticateInternalRequest } from "./middleware.js";

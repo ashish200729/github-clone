@@ -2,6 +2,8 @@ export {
   buildRedisKey,
   closeRedis,
   delKey,
+  delKeys,
+  delKeysByPattern,
   getJson,
   getRedisClient,
   getRedisHealth,

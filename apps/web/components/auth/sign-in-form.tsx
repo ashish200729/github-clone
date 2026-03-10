@@ -10,6 +10,7 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
 
   return (
     <form
+      className="space-y-4"
       action={async () => {
         "use server";
         await signIn("github", { redirectTo: safeCallbackUrl });
@@ -17,7 +18,7 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
     >
       <button
         type="submit"
-        className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        className="w-full rounded-md border border-transparent bg-[#238636] px-4 py-1.5 text-sm font-semibold leading-5 text-white shadow-sm transition-colors hover:bg-[#2ea043] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58a6ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1117] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Sign in with GitHub
       </button>

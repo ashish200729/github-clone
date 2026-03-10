@@ -2,11 +2,22 @@ import { type Server } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type Request, type Response } from "express";
+import helmet from "helmet";
 import { authenticateInternalRequest, loadInternalAuthConfig } from "./auth/index.js";
-import { closeDatabasePool, getDatabaseHealth, verifyDatabaseConnection } from "./db/index.js";
+import { closeDatabasePool, getDatabaseHealth, getDatabasePool, verifyDatabaseConnection } from "./db/index.js";
 import { ensureApiEnvLoaded } from "./env/load.js";
+import { getGitServiceHealth, verifyGitServiceConnection } from "./git-service/index.js";
 import { summarizeServiceHealth } from "./health.js";
+import { errorHandler } from "./http/errors.js";
+import { attachRequestId } from "./http/request-id.js";
+import { handleInternalLiveStream } from "./live/stream.js";
+import { RATE_LIMIT_POLICIES } from "./rate-limit/config.js";
+import { createRateLimitMiddleware } from "./rate-limit/middleware.js";
 import { closeRedis, getRedisHealth, initRedis } from "./redis/index.js";
+import { closeRepositoryQueueResources } from "./queue/repository-queue.js";
+import { getQueueHealth } from "./queue/health.js";
+import { createRepositoryRouter } from "./repos/routes.js";
+import { verifyRepositorySchema } from "./repos/schema.js";
 
 ensureApiEnvLoaded();
 
@@ -52,10 +63,16 @@ const shutdownTimeoutMs = loadShutdownTimeoutMs(process.env.API_SHUTDOWN_TIMEOUT
 
 const application = express();
 application.disable("x-powered-by");
-application.use(express.json({ limit: "64kb" }));
+application.use(attachRequestId);
+application.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  }),
+);
+application.use(express.json({ limit: "12mb" }));
 
 async function closeDependencies(): Promise<void> {
-  const shutdownResults = await Promise.allSettled([closeRedis(), closeDatabasePool()]);
+  const shutdownResults = await Promise.allSettled([closeRepositoryQueueResources(), closeRedis(), closeDatabasePool()]);
   const shutdownErrors = shutdownResults
     .filter((result): result is PromiseRejectedResult => result.status === "rejected")
     .map((result) => result.reason);
@@ -88,7 +105,12 @@ async function listen(applicationInstance: typeof application, listenPort: numbe
 }
 
 application.get("/health", async (_request: Request, response: Response) => {
-  const [database, redis] = await Promise.all([getDatabaseHealth(), getRedisHealth()]);
+  const [database, redis, gitService, queue] = await Promise.all([
+    getDatabaseHealth(),
+    getRedisHealth(),
+    getGitServiceHealth(),
+    getQueueHealth(),
+  ]);
   const summary = summarizeServiceHealth([
     {
       name: "database",
@@ -99,6 +121,16 @@ application.get("/health", async (_request: Request, response: Response) => {
       name: "redis",
       status: redis.status,
       required: redis.required,
+    },
+    {
+      name: "git-service",
+      status: gitService.status,
+      required: gitService.required,
+    },
+    {
+      name: "queue",
+      status: queue.status,
+      required: queue.required,
     },
   ]);
 
@@ -111,6 +143,8 @@ application.get("/health", async (_request: Request, response: Response) => {
     uptimeSeconds: Math.round(process.uptime()),
     database,
     redis,
+    gitService,
+    queue,
   });
 });
 
@@ -139,39 +173,6 @@ application.get("/api/internal/viewer", authenticateInternalRequest, (request: R
   });
 });
 
-application.post("/api/internal/repos", authenticateInternalRequest, (request: Request, response: Response) => {
-  const actor = request.authenticatedActor;
-  const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
-
-  if (!actor) {
-    response.status(500).json({
-      error: {
-        code: "INTERNAL_AUTH_MISSING",
-        message: "Authenticated actor context was missing after verification.",
-      },
-    });
-    return;
-  }
-
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/.test(name)) {
-    response.status(400).json({
-      error: {
-        code: "INVALID_REPOSITORY_NAME",
-        message: "Repository names must use lowercase letters, numbers, and hyphens.",
-      },
-    });
-    return;
-  }
-
-  response.status(201).json({
-    repo: {
-      name,
-      ownerId: actor.userId,
-      visibility: "private",
-      status: "draft",
-    },
-  });
-});
 
 async function startServer(): Promise<void> {
   let server: Server | undefined;
@@ -179,7 +180,19 @@ async function startServer(): Promise<void> {
   try {
     loadInternalAuthConfig();
     await verifyDatabaseConnection();
+    await verifyRepositorySchema(getDatabasePool());
     await initRedis();
+    await verifyGitServiceConnection();
+    application.get(
+      "/api/internal/live",
+      authenticateInternalRequest,
+      createRateLimitMiddleware("live-stream", RATE_LIMIT_POLICIES.liveStream),
+      async (request, response) => {
+        await handleInternalLiveStream(request, response);
+      },
+    );
+    application.use(createRepositoryRouter());
+    application.use(errorHandler);
     server = await listen(application, port);
   } catch (error) {
     console.error("Failed to start the API.", error);

@@ -8,9 +8,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n web,api,git -c blue,green,yellow \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:git-service\"",
+    "dev": "concurrently -n web,api,worker,git -c blue,green,magenta,yellow \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:git-service\"",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:api": "npm run dev --workspace apps/api",
+    "dev:worker": "npm run dev:worker --workspace apps/api",
     "dev:git-service": "cd apps/git-service && go run ./cmd/server",
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/web",
     "lint": "npm run lint --workspace apps/web && npm run lint --workspace apps/api",

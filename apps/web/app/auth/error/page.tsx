@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { AuthPageFrame } from "@/components/auth/auth-page-frame";
 import { getAuthErrorMessage } from "@/lib/auth/error-messages";
+import Link from "next/link";
 
 interface AuthErrorPageProps {
   searchParams: Promise<{
@@ -11,31 +12,35 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
   const params = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.08),_transparent_35%),linear-gradient(180deg,_#f8fafc,_#e2e8f0)] px-6 py-16">
-      <section className="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/95 p-10 shadow-[0_35px_90px_rgba(15,23,42,0.08)] backdrop-blur">
-        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">Auth Error</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">Authentication could not complete</h1>
-        <p className="mt-4 text-base leading-7 text-slate-600">{getAuthErrorMessage(params.error)}</p>
-        {params.error ? (
-          <p className="mt-4 text-sm text-slate-500">
-            Error code: <code>{params.error}</code>
-          </p>
-        ) : null}
-        <div className="mt-8 flex flex-wrap gap-3">
+    <AuthPageFrame
+      heading="Authentication could not complete"
+      description="The sign-in flow stopped before a valid session could be created. Review the message below and try again."
+      supportingTitle={params.error ? "Error code" : undefined}
+      supportingContent={
+        params.error ? (
+          <code className="rounded-md border border-[#30363d] bg-[#161b22] px-2 py-1 text-xs text-[#f0f6fc]">{params.error}</code>
+        ) : null
+      }
+    >
+      <div className="space-y-6">
+        <div className="rounded-xl border border-[#ff7b72]/30 bg-[#ff7b72]/10 px-4 py-4 text-sm leading-6 text-[#ffb3ba]">
+          {getAuthErrorMessage(params.error)}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href="/sign-in"
-            className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="inline-flex items-center justify-center rounded-xl border border-[#2f81f7]/35 bg-[#238636] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2ea043] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58a6ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#161b22]"
           >
-            Return to sign-in
+            Return to sign in
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+            className="inline-flex items-center justify-center rounded-xl border border-[#30363d] bg-[#0d1117] px-5 py-3 text-sm font-semibold text-[#c9d1d9] transition hover:border-[#8b949e] hover:bg-[#161b22] hover:text-[#f0f6fc]"
           >
             Back home
           </Link>
         </div>
-      </section>
-    </main>
+      </div>
+    </AuthPageFrame>
   );
 }

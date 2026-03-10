@@ -1,215 +1,348 @@
 # GitHub Clone
 
-Minimal starter monorepo with a Next.js frontend, an Express API, and a Go service.
+Monorepo for a Git hosting prototype with:
 
-## Apps
+- `apps/web`: Next.js 16 App Router UI with Auth.js
+- `apps/api`: Express API for repository metadata, authz, and orchestration
+- `apps/git-service`: Go service for bare repository storage, Git reads/writes, and smart HTTP transport
 
-- `apps/web`: Next.js 16 app-router frontend
-- `apps/api`: Express hello endpoint
-- `apps/git-service`: Go hello endpoint
+## Repository Core
+
+This phase implements the first real repository workflow:
+
+- create public or private repositories from the UI
+- optionally initialize a repository with a README
+- browse branches, commits, trees, and blobs in the browser
+- handle empty repositories as first-class states
+- create files and upload multiple files from the browser as real commits
+- clone, fetch, and push with real Git over smart HTTP
+- enforce visibility rules in both the API and the Git transport layer
+
+Repository metadata lives in PostgreSQL. Git objects and refs live only in the Git service under the configured repository root.
+
+## Reliability Hardening
+
+The current stack now also includes:
+
+- Redis-backed rate limiting for high-risk API routes
+- BullMQ queue infrastructure for repository follow-up work
+- a separate repository worker process
+- SSE-based live repository status updates
+- queue and worker visibility in health reporting
+- explicit degraded-mode handling when live updates or worker state are unavailable
 
 ## Quick Start
 
-1. Install Node.js 20+ and Go 1.22+.
+1. Install Node.js 20+ and Go 1.25+.
 2. Run `npm install`.
-3. Start the app stack with `npm run dev`.
+3. Copy these env templates:
+   - `apps/web/.env.example` -> `apps/web/.env`
+   - `apps/api/.env.example` -> `apps/api/.env`
+   - `apps/git-service/.env.example` -> `apps/git-service/.env`
+4. Set the shared secrets consistently:
+   - `INTERNAL_API_AUTH_SECRET` must match in `apps/web` and `apps/api`
+   - `GIT_SERVICE_INTERNAL_TOKEN` must match in `apps/api` and `apps/git-service`
+   - `GIT_TRANSPORT_TOKEN_SECRET` must match in `apps/api` and `apps/git-service`
+5. Set `GIT_REPOSITORY_ROOT` in `apps/git-service/.env` to a writable absolute directory outside the repo working tree.
+6. Run the API migrations:
+   - `npm run db:migrate --workspace apps/api`
+7. Start the stack:
+   - `npm run dev`
 
-## Commands
+Default local ports:
 
-- `npm run dev`: run web, API, and git-service together
-- `npm run build`: build API and frontend
-- `npm run lint`: lint the web app and typecheck the API
-- `npm run typecheck`: typecheck the whole monorepo
+- web: `http://localhost:3000`
+- api: `http://localhost:4000`
+- git-service: `http://localhost:8080`
 
-## PostgreSQL Setup
+`npm run dev` now runs:
 
-The API now expects a PostgreSQL connection before it will start.
+- Next.js web app
+- Express API
+- BullMQ worker
+- Go git-service
 
-- Required env: `DATABASE_URL`
-- Optional env:
-  - `DATABASE_POOL_MAX` default `10`
-  - `DATABASE_IDLE_TIMEOUT_MS` default `30000`
-  - `DATABASE_CONNECTION_TIMEOUT_MS` default `10000`
-  - `DATABASE_SSL` values: `disable` or `require`
+## Environment
 
-Database commands for `apps/api`:
+### `apps/web`
 
-- `npm run db:migrate --workspace apps/api`
-- `npm run db:rollback --workspace apps/api`
-- `npm run db:status --workspace apps/api`
+Required:
 
-The API reads its database env from `apps/api/.env`.
-
-The initial schema is intentionally custom and namespaced under `auth.*`. It is Auth.js-ready, but not the exact default Auth.js PostgreSQL adapter schema. A later Auth.js integration must use an adapter connection or pool configured with `search_path=auth,public` and must be verified explicitly.
-
-## Redis Setup
-
-The API also bootstraps Redis before it will serve requests.
-
-- Required env:
-  - `REDIS_URL` when `REDIS_REQUIRED=true`
-- Optional env:
-  - `API_SHUTDOWN_TIMEOUT_MS` default `10000`
-  - `REDIS_KEY_PREFIX` default `ghclone:api:`
-  - `REDIS_CONNECT_TIMEOUT_MS` default `10000`
-  - `REDIS_REQUIRED` values: `true` or `false`, default `true`
-
-Accepted Redis connection string schemes:
-
-- `redis://`
-- `rediss://`
-
-If `REDIS_REQUIRED=true`, the API exits before `listen()` when the Redis env is invalid or Redis cannot answer `PING`.
-
-If `REDIS_REQUIRED=false`, the API starts in degraded mode and `GET /health` reports Redis as degraded.
-
-On `SIGINT` or `SIGTERM`, the API attempts a graceful shutdown. If the HTTP server has not drained within `API_SHUTDOWN_TIMEOUT_MS`, it force-closes open connections and exits with status `1`.
-
-The API reads database and Redis env from `apps/api/.env`. Use `apps/api/.env.example` as the starter template.
-
-## Auth Setup
-
-Authentication now lives in `apps/web` with Auth.js and GitHub OAuth.
-
-- `apps/web/auth.ts` owns the Auth.js configuration
-- `apps/web/app/api/auth/[...nextauth]/route.ts` exposes the callback/session routes
-- PostgreSQL stores Auth.js users, accounts, sessions, and verification tokens under the existing `auth.*` schema
-- Express does not run Auth.js and does not trust browser-supplied identities
-
-### Session Strategy
-
-This integration uses Auth.js database sessions.
-
-- Why:
-  - PostgreSQL is already part of the stack
-  - server-side session revocation is safer for a Git hosting product than long-lived self-contained JWT sessions
-  - it gives a cleaner path for future admin controls, PATs, SSH keys, and account management
-- Client-visible session fields are intentionally minimal:
-  - `user.id`
-  - `user.name`
-  - `user.email`
-  - `user.image`
-  - optional future-safe `role`
-
-### Custom `auth` Schema Compatibility
-
-The Auth.js PostgreSQL adapter uses a dedicated pool in `apps/web/lib/auth/postgres.ts`.
-
-- The pool is isolated from other application DB access
-- It sets `options=-c search_path=auth,public`
-- Auth sign-in verification explicitly checks that these tables exist:
-  - `auth.users`
-  - `auth.accounts`
-  - `auth.sessions`
-  - `auth.verification_token`
-
-If those tables are missing, sign-in fails closed instead of silently creating data in the wrong schema.
-
-### Trusted Next.js to Express Boundary
-
-Express is protected by a short-lived signed internal actor token.
-
-- Next.js verifies the Auth.js session on the server
-- Next.js mints a compact HMAC-signed actor token with:
-  - authenticated user id
-  - optional email
-  - optional role
-  - request method
-  - request path
-  - short expiry
-- Express verifies that signature with `INTERNAL_API_AUTH_SECRET`
-- Express rejects missing, expired, forged, or path/method-mismatched actor tokens
-
-Browser clients cannot choose a user id for Express. The trusted identity only exists after a successful server-side Auth.js session check.
-
-### Required Environment Variables
-
-`apps/web/.env.example` shows the web auth contract.
-
-- Required in `apps/web`:
-  - `AUTH_SECRET`
-  - `AUTH_GITHUB_ID`
-  - `AUTH_GITHUB_SECRET`
-  - `DATABASE_URL`
-  - `API_INTERNAL_URL`
-  - `INTERNAL_API_AUTH_SECRET`
-- Optional in `apps/web`:
-  - `DATABASE_SSL` values: `disable` or `require`
-  - `AUTH_URL` when the deployment runtime cannot infer the public base URL safely
-
-`apps/api/.env.example` now also requires:
-
+- `AUTH_SECRET`
+- `AUTH_GITHUB_ID`
+- `AUTH_GITHUB_SECRET`
+- `DATABASE_URL`
+- `API_INTERNAL_URL`
 - `INTERNAL_API_AUTH_SECRET`
 
-Use the same `INTERNAL_API_AUTH_SECRET` value in `apps/web` and `apps/api`.
+Optional:
 
-Generate `AUTH_SECRET` with either:
+- `DATABASE_SSL`
+- `AUTH_URL`
 
-- `npx auth secret`
-- `openssl rand -base64 33`
+### `apps/api`
 
-### GitHub OAuth App
+Required:
 
-Create a GitHub OAuth App with:
+- `INTERNAL_API_AUTH_SECRET`
+- `GIT_SERVICE_URL`
+- `GIT_HTTP_BASE_URL`
+- `GIT_SERVICE_INTERNAL_TOKEN`
+- `GIT_TRANSPORT_TOKEN_SECRET`
+- `DATABASE_URL`
 
-- Homepage URL:
-  - local: `http://localhost:3000`
-  - production: `https://your-domain.example`
-- Authorization callback URL:
-  - local: `http://localhost:3000/api/auth/callback/github`
-  - production: `https://your-domain.example/api/auth/callback/github`
+Optional:
 
-GitHub callback URLs must match exactly. If they do not, the callback fails safely and Auth.js redirects to the configured error page.
+- `GIT_TRANSPORT_TOKEN_TTL_SECONDS` default `43200`
+- `GIT_HTTP_BASE_PATH` default `/git`
+- `DATABASE_POOL_MAX`
+- `DATABASE_IDLE_TIMEOUT_MS`
+- `DATABASE_CONNECTION_TIMEOUT_MS`
+- `DATABASE_SSL`
+- `REDIS_URL`
+- `REDIS_KEY_PREFIX`
+- `REDIS_CONNECT_TIMEOUT_MS`
+- `REDIS_REQUIRED`
 
-### Protected Routes
+### `apps/git-service`
 
-The Next.js app now protects:
+Required:
 
-- `/dashboard`
-- `/repos/new`
-- `/settings`
+- `GIT_REPOSITORY_ROOT`
+- `GIT_SERVICE_INTERNAL_TOKEN`
+- `GIT_TRANSPORT_TOKEN_SECRET`
+- `DATABASE_URL`
 
-Protected server actions re-check the session before forwarding any request to Express.
+Optional:
 
-### Redis
+- `GIT_SERVICE_PORT` default `8080`
+- `GIT_HTTP_BASE_PATH` default `/git`
+- `DATABASE_SSL`
 
-Redis is intentionally not part of the core Auth.js session storage in this phase.
+## Auth and Trust Boundaries
 
-- PostgreSQL remains the source of truth for users, accounts, and sessions
-- Redis remains available for future auth-adjacent work such as sign-in rate limiting or short-lived anti-abuse state
-- If Redis is unavailable and `REDIS_REQUIRED=false`, auth still works because it does not depend on Redis in this phase
+- Browser users authenticate with GitHub OAuth through Auth.js in `apps/web`.
+- Next.js server actions and server components forward identity to Express using a short-lived HMAC-signed internal actor token.
+- Express does not trust browser-provided user IDs.
+- Git CLI access does not use browser cookies.
+- Private clone/fetch and all pushes use a temporary repo-scoped Git transport token generated from the repository page.
 
-### Local Verification Checklist
+## Repository Metadata Model
 
-1. Copy the env examples into your local env files and provide real GitHub OAuth credentials.
-2. Run `npm run db:migrate --workspace apps/api`.
-3. Start the stack with `npm run dev`.
-4. Open `http://localhost:3000/sign-in` and complete GitHub sign-in.
-5. Confirm rows are created under `auth.users`, `auth.accounts`, and `auth.sessions`.
-6. Visit `/dashboard`, `/repos/new`, and `/settings` while signed in.
-7. Sign out and confirm those routes redirect back to sign-in.
-8. Confirm direct requests to `http://localhost:4000/api/internal/viewer` fail without the trusted header.
+PostgreSQL owns:
 
-### Automated Checks
+- `auth.users`
+- `auth.accounts`
+- `auth.sessions`
+- `public.repositories`
 
-- `npm run typecheck --workspace apps/web`
-- `npm run lint --workspace apps/web`
-- `npm test --workspace apps/web`
+`public.repositories` stores:
+
+- repository id
+- owner id
+- repository name
+- description
+- visibility
+- default branch
+- storage key
+- empty/initialized state
+- timestamps
+
+Bare repositories live under:
+
+- `${GIT_REPOSITORY_ROOT}/{storage_key}.git`
+
+## API Surface
+
+Express exposes repository routes under `/api/repos`:
+
+- `POST /api/repos`
+- `GET /api/repos`
+- `GET /api/repos/:owner/:repo`
+- `GET /api/repos/:owner/:repo/branches`
+- `GET /api/repos/:owner/:repo/commits`
+- `GET /api/repos/:owner/:repo/tree`
+- `GET /api/repos/:owner/:repo/blob`
+- `POST /api/repos/:owner/:repo/upload`
+- `POST /api/repos/:owner/:repo/files`
+- `POST /api/repos/:owner/:repo/git-token`
+
+The Go service exposes:
+
+- internal JSON routes under `/internal/repos/...` for Express orchestration
+- Git smart HTTP transport under `GIT_HTTP_BASE_PATH/:owner/:repo.git/...` where `GIT_HTTP_BASE_PATH` defaults to `/git`
+
+Live update proxy:
+
+- Next.js SSE route at `/api/live`
+
+Internal live stream:
+
+- Express internal SSE route at `/api/internal/live`
+
+## Rate Limiting
+
+Redis-backed rate limiting is applied narrowly by endpoint class.
+
+- repo creation: strict authenticated write limit
+- repo file/upload writes: authenticated write limit
+- git token generation: authenticated write limit
+- expensive repo reads such as tree/blob/commits/overview: softer read limit
+- auth sign-in and callback abuse protection: handled on the web auth route with Redis counters
+- live update stream reconnects: limited on the internal live stream
+
+Policy direction:
+
+- write-heavy and abuse-prone routes fail closed if the limiter store is unavailable
+- read-heavy routes are allowed to degrade more gracefully
+
+## Queue and Worker
+
+BullMQ is used for follow-up repository synchronization work.
+
+- queue name: `repo-maintenance`
+- worker entrypoint: `apps/api/src/worker.ts`
+- the worker warms repo read caches and emits live repository sync events
+- queue jobs are keyed per repository to avoid duplicate job storms
+- retries use bounded exponential backoff
+
+Health now reports queue state and worker heartbeat so the app can show degraded-but-working status instead of pretending everything is healthy.
+
+## Local Usage
+
+### Create a repository
+
+1. Sign in at `http://localhost:3000/sign-in`.
+2. Open `http://localhost:3000/repos/new`.
+3. Choose visibility and optional README initialization.
+4. After creation you are redirected to `/:owner/:repo`.
+
+### Empty repository flow
+
+The repo page shows:
+
+- clone URL
+- push instructions
+- create-file form
+- browser upload form
+- Git token generation for private repos
+
+### Clone a public repository
+
+If you keep the default `GIT_HTTP_BASE_PATH=/git`:
+
+```bash
+git clone http://localhost:8080/git/<owner>/<repo>.git
+```
+
+If you change `GIT_HTTP_BASE_PATH`, set the same value in both `apps/api` and `apps/git-service`, and replace `/git` in the clone URL with that configured base path.
+
+### Clone or push a private repository
+
+1. Open the repository page as the owner.
+2. Generate a temporary Git token.
+3. Use the clone URL shown on the page.
+4. When Git prompts for credentials:
+   - username: the repository owner handle
+   - password: the generated token
+
+### Push an existing local repository
+
+With the default `GIT_HTTP_BASE_PATH=/git`:
+
+```bash
+git remote add origin http://localhost:8080/git/<owner>/<repo>.git
+git push -u origin main
+```
+
+If the Git HTTP base path is customized, use that configured path instead of `/git`.
+
+If the repository is private, Git prompts for the temporary token.
+
+## Browser Write Workflow
+
+The browser UI supports:
+
+- creating a new file with a commit message
+- uploading multiple files in the current directory as one commit
+
+Current limitations:
+
+- folder upload is intentionally postponed
+- large binary files are not previewed in the browser
+- README preview is rendered as safe plain text, not full Markdown HTML
+
+Follow-up repository cache warming and live status updates happen in the background through the worker. Core writes still complete inline so existing behavior stays the same.
+
+## Live Updates
+
+Repository pages subscribe to an SSE stream through `/api/live`.
+
+- live status is scoped to the authenticated user and current repository
+- the UI handles connecting, reconnecting, and degraded states
+- duplicate events are suppressed by job/status keys
+- terminal repository sync events trigger a refresh so the page picks up warmed read models
+
+## Public and Private Behavior
+
+Guests:
+
+- can browse public repositories
+- can clone public repositories
+- cannot create repos
+- cannot push or use browser write flows
+
+Signed-in users:
+
+- can create repositories
+- can browse their own public and private repositories
+- can browse other users' public repositories
+- cannot browse other users' private repositories
+
+Repository owners:
+
+- can push with a temporary Git token
+- can upload and create files from the browser
+- can generate private clone credentials from the repository page
+
+## Verification
+
+### Automated
+
 - `npm run typecheck --workspace apps/api`
 - `npm test --workspace apps/api`
+- `npm run build --workspace apps/api`
+- `npm run typecheck --workspace apps/web`
+- `npm test --workspace apps/web`
+- `../../node_modules/.bin/next build --webpack` from `apps/web`
+- `cd apps/git-service && GOCACHE=/tmp/github-clone-go-cache go test ./...`
 
-### Known Limitations and Next Steps
+### Manual
 
-- GitHub is the only provider in this phase
-- No passkeys, magic links, PATs, or SSH key management are included yet
-- No advanced RBAC is implemented yet beyond a future-ready optional `role` field
-- Repository authorization remains separate from simple “is signed in”
+1. Create a public repository.
+2. Create a private repository.
+3. Create an empty repository and verify the empty-state instructions.
+4. Create a repository with README initialization and verify the default branch and first commit.
+5. Clone a public repository.
+6. Generate a Git token and push to your own repository.
+7. Verify push rejection without a token or with the wrong owner token.
+8. Browse tree, blob, and commits pages in the web UI.
+9. Upload files through the browser.
+10. Create a new file through the browser.
+11. Verify private repository access is denied for a different user or a guest.
+12. Verify invalid branches and paths return safe not-found or validation states.
+13. Verify repeated write actions hit rate limits instead of duplicating work.
+14. Verify the worker heartbeat appears in `/health`.
+15. Verify a repo page shows live repository sync status during upload/create-file follow-up work.
 
-## Endpoints
+## Known Limitations
 
-- API: `GET /health`, `GET /api/hello`
-  - `GET /api/internal/viewer` requires the trusted internal actor token
-  - `POST /api/internal/repos` requires the trusted internal actor token
-  - `GET /health` now includes `database` and `redis` dependency objects with `status`, `required`, `message`, and `latencyMs` when available
-  - `GET /health` returns HTTP `503` when a required dependency is unhealthy, and HTTP `200` for healthy or degraded optional-dependency states
-- Go service: `GET /health`, `GET /hello`
+- repo writes still complete inline; the queue currently handles follow-up synchronization and live-update fan-out rather than replacing core writes
+- auth abuse protection is scoped to the Auth.js route surface, not a full standalone auth gateway
+- live updates use SSE and user-scoped repo events only; there is no general realtime platform
+
+- no collaborators, pull requests, issues, or stars yet
+- no SSH transport or long-lived personal access tokens
+- no branch protection rules
+- no folder upload in the browser
+- no Markdown HTML renderer for README preview

@@ -1,12 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { FaGithub, FaChevronRight } from "react-icons/fa";
 import { Search, Bot, Code2, ShieldCheck, GitPullRequest, Globe } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
+import { InstantLink as Link } from "@/components/navigation/instant-link";
 
-const Navigation = () => (
+interface LandingPageProps {
+  isAuthenticated?: boolean;
+  dashboardPath?: string;
+}
+
+const Navigation = ({ isAuthenticated = false, dashboardPath = "/dashboard" }: LandingPageProps) => (
   <header className="fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4 bg-[#040d21]/80 backdrop-blur-md border-b border-white/10">
     <div className="flex items-center gap-6">
       <Link href="/" className="text-white hover:text-white/80 transition-colors">
@@ -32,17 +37,30 @@ const Navigation = () => (
           className="w-[240px] bg-[#161b22]/50 border border-white/20 rounded-md py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all backdrop-blur-md"
         />
       </div>
-      <Link href="/sign-in" className="text-[15px] font-semibold hover:text-white/70 hidden sm:block transition-colors">
-        Sign in
-      </Link>
-      <Link href="/sign-up" className="border border-white/20 rounded-md px-3 py-1.5 text-[15px] font-semibold hover:border-white transition-all">
-        Sign up
-      </Link>
+      {isAuthenticated ? (
+        <>
+          <Link href={dashboardPath} className="text-[15px] font-semibold hover:text-white/70 hidden sm:block transition-colors">
+            Dashboard
+          </Link>
+          <Link href="/repos/new" className="border border-white/20 rounded-md px-3 py-1.5 text-[15px] font-semibold hover:border-white transition-all">
+            New repository
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link href="/sign-in" className="text-[15px] font-semibold hover:text-white/70 hidden sm:block transition-colors">
+            Sign in
+          </Link>
+          <Link href="/sign-in" className="border border-white/20 rounded-md px-3 py-1.5 text-[15px] font-semibold hover:border-white transition-all">
+            Get started
+          </Link>
+        </>
+      )}
     </div>
   </header>
 );
 
-const Hero = () => {
+const Hero = ({ isAuthenticated = false, dashboardPath = "/dashboard" }: LandingPageProps) => {
   return (
     <section className="relative pt-36 pb-24 px-6 sm:px-12 lg:px-24 flex flex-col items-center justify-center text-center mx-auto min-h-[90vh]">
       {/* Glow Effects */}
@@ -65,7 +83,7 @@ const Hero = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
       >
-        Let's build from here
+        Let&apos;s build from here
       </motion.h1>
       
       <motion.p 
@@ -74,7 +92,7 @@ const Hero = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
       >
-        The world's leading AI-powered developer platform.
+        The world&apos;s leading AI-powered developer platform.
       </motion.p>
       
       <motion.div 
@@ -90,19 +108,25 @@ const Hero = () => {
             className="flex-1 bg-transparent border-0 outline-none text-white px-2 py-4 md:py-5 text-lg md:text-xl w-full font-medium placeholder:text-[#7d8590] focus:ring-0"
           />
         </div>
-        <button className="bg-[#2ea043] hover:bg-[#2c974b] text-white px-8 py-4 md:py-5 rounded-full font-bold text-[17px] transition-all w-full sm:w-auto shrink-0 shadow-[0_0_20px_rgba(46,160,67,0.4)] hover:shadow-[0_0_30px_rgba(46,160,67,0.6)]">
-          Sign up for GitHub
-        </button>
+        <Link
+          href={isAuthenticated ? dashboardPath : "/sign-in"}
+          className="bg-[#2ea043] hover:bg-[#2c974b] text-white px-8 py-4 md:py-5 rounded-full font-bold text-[17px] transition-all w-full sm:w-auto shrink-0 shadow-[0_0_20px_rgba(46,160,67,0.4)] hover:shadow-[0_0_30px_rgba(46,160,67,0.6)] text-center"
+        >
+          {isAuthenticated ? "Open dashboard" : "Sign up for GitHub"}
+        </Link>
         <div className="hidden sm:block w-[1px] h-10 bg-[#ffffff20] mx-4"></div>
-        <button className="bg-transparent hover:bg-white/5 border border-white/20 text-white px-8 py-4 md:py-5 rounded-full font-bold text-[17px] transition-all w-full sm:w-auto shrink-0 whitespace-nowrap hidden sm:block">
-          Start a free enterprise trial
-        </button>
+        <Link
+          href={isAuthenticated ? "/repos/new" : "/sign-in"}
+          className="bg-transparent hover:bg-white/5 border border-white/20 text-white px-8 py-4 md:py-5 rounded-full font-bold text-[17px] transition-all w-full sm:w-auto shrink-0 whitespace-nowrap hidden sm:block text-center"
+        >
+          {isAuthenticated ? "Create a repository" : "Start a free enterprise trial"}
+        </Link>
       </motion.div>
     </section>
   );
 };
 
-export function LandingPage() {
+export function LandingPage({ isAuthenticated = false, dashboardPath = "/dashboard" }: LandingPageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -111,12 +135,12 @@ export function LandingPage() {
 
   const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
-  return (
+    return (
     <div className="min-h-screen bg-[#040d21] text-white font-sans overflow-x-hidden selection:bg-[#79c0ff]/30" ref={containerRef}>
-      <Navigation />
+      <Navigation isAuthenticated={isAuthenticated} dashboardPath={dashboardPath} />
       
       <main className="relative">
-        <Hero />
+        <Hero isAuthenticated={isAuthenticated} dashboardPath={dashboardPath} />
 
         {/* Global Connecting Line Container */}
         <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
@@ -174,7 +198,7 @@ export function LandingPage() {
                     1<br/>2<br/>3<br/>4<br/>5<br/>6<br/>7<br/>8<br/>9<br/>10
                   </div>
                   <div>
-                      <span className="text-[#ff7b72]">import</span> {'{'} useState, useEffect {'}'} <span className="text-[#ff7b72]">from</span> <span className="text-[#a5d6ff]">'react'</span>;{'\n\n'}
+                      <span className="text-[#ff7b72]">import</span> {'{'} useState, useEffect {'}'} <span className="text-[#ff7b72]">from</span> <span className="text-[#a5d6ff]">&apos;react&apos;</span>;{'\n\n'}
                       <span className="text-[#ff7b72]">export function</span> <span className="text-[#d2a8ff]">useDebounce</span>{'<'}T{'>'}(value: T, delay: <span className="text-[#79c0ff]">number</span>) {'{\n'}
                       {'  '} <span className="text-[#ff7b72]">const</span> [debouncedValue, setDebouncedValue] = <span className="text-[#d2a8ff]">useState</span>(value);{'\n\n'}
                       {'  '} <span className="text-[#d2a8ff]">useEffect</span>(() <span className="text-[#ff7b72]">=&gt;</span> {'{\n'}
@@ -263,18 +287,20 @@ export function LandingPage() {
                  <div className="space-y-2 font-mono text-sm leading-relaxed overflow-x-auto">
                    <div className="flex bg-[#e5534b]/10 border border-[#e5534b]/20 rounded-md p-3">
                      <span className="text-[#ff7b72] mr-4 select-none">-</span>
-                     <span className="text-[#e6edf3]">db.query(<span className="text-[#a5d6ff]">`SELECT * FROM users WHERE name = '<span className="text-white bg-[#e5534b]/30">{"${req.query.name}"}</span>'`</span>)</span>
+                     <span className="text-[#e6edf3]">db.query(<span className="text-[#a5d6ff]">`SELECT * FROM users WHERE name = &apos;<span className="text-white bg-[#e5534b]/30">{"${req.query.name}"}</span>&apos;`</span>)</span>
                    </div>
                    <div className="flex bg-[#2ea043]/10 border border-[#2ea043]/20 rounded-md p-3">
                      <span className="text-[#3fb950] mr-4 select-none">+</span>
-                     <span className="text-[#e6edf3]">db.query(<span className="text-[#a5d6ff]">'SELECT * FROM users WHERE name = ?'</span>, [req.query.name])</span>
+                     <span className="text-[#e6edf3]">db.query(<span className="text-[#a5d6ff]">&apos;SELECT * FROM users WHERE name = ?&apos;</span>, [req.query.name])</span>
                    </div>
                  </div>
                </div>
                
                <button className="inline-flex items-center gap-2 font-bold text-[#d2a8ff] hover:text-[#e2c5ff] transition-colors group">
                  Explore GitHub Advanced Security 
-                 <FaChevronRight className="group-hover:translate-x-1 transition-transform" size={12} />
+                 <span className="transition-transform group-hover:translate-x-1">
+                   <FaChevronRight size={12} />
+                 </span>
                </button>
             </motion.div>
           </section>
@@ -345,7 +371,7 @@ export function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-extrabold mb-8 tracking-tight">
               Over 100 million developers <br/> call GitHub home
             </h2>
-            <Link href="/sign-up" className="bg-white hover:bg-gray-200 text-black px-10 py-5 rounded-full font-bold text-lg transition-all shadow-xl">
+            <Link href="/sign-in" className="bg-white hover:bg-gray-200 text-black px-10 py-5 rounded-full font-bold text-lg transition-all shadow-xl">
               Create a free account
             </Link>
           </motion.div>

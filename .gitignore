@@ -2,6 +2,7 @@ node_modules
 .env
 .env.*
 !.env.example
+.local
 package-lock.json
 dist
 .DS_Store

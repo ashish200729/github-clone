@@ -7,16 +7,17 @@ interface AuthShellProps {
   heading: string;
   description: string;
   user: AuthenticatedAppUser;
+  dashboardHref: string;
   children: ReactNode;
 }
 
-const navigationItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/repos/new", label: "Create Repo" },
-  { href: "/settings", label: "Settings" },
-] as const;
+export function AuthShell({ heading, description, user, dashboardHref, children }: AuthShellProps) {
+  const navigationItems = [
+    { href: dashboardHref, label: "Dashboard" },
+    { href: "/repos/new", label: "Create Repo" },
+    { href: "/settings", label: "Settings" },
+  ] as const;
 
-export function AuthShell({ heading, description, user, children }: AuthShellProps) {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.08),_transparent_40%),linear-gradient(180deg,_#f8fafc,_#e2e8f0)] px-6 py-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
